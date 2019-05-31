@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import glob
 import sys
 import os
 import argparse
@@ -17,14 +17,13 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('input_dir', type=str, help='Directory with unaligned images.')
 parser.add_argument('output_dir', type=str, help='Directory with aligned face thumbnails.')
-parser.add_argument('--image_size', type=int,
-                    help='Image size (height, width) in pixels.', default=160)
-parser.add_argument('--detect_multiple_faces', type=bool,
-                    help='Detect and align multiple faces per image.', default=False)
-parser.add_argument('--num_marks', type=int, help='The landmarks you want to detect to decide face boundary.', default=68)
-parser.add_argument('--scale', type=float, help='The factor to scale image', default=1.5)
-parser.add_argument('--plus', type=bool, help='If use cnn to detect face', default=True)
-parser.add_argument('--use_dlib', type=bool, help='If use dlib as the landmark detector', default=False)
+parser.add_argument('--image_size', type=int, default=224, help='Image size (height, width) in pixels.')
+parser.add_argument('--detect_multiple_faces', type=bool, default=False, help='Detect and align multiple faces per image.')
+parser.add_argument('--num_marks', type=int, default=68, help='The landmarks you want to detect to decide face boundary.')
+parser.add_argument('--scale', type=float, default=1.4, help='The factor to scale image')
+parser.add_argument('--plus', type=bool, default=True, help='If use cnn to detect face')
+parser.add_argument('--use_dlib', type=bool, default=False, help='If use dlib as the landmark detector')
+parser.add_argument('--OpenFace', type=str, default='/home/mean/demo/OpenFace/build/bin/FaceLandmarkImg', help='The path of openface you build in')
 args = parser.parse_args()
 use_dlib = args.use_dlib
 use_dlib = False
@@ -35,6 +34,7 @@ IMG_EXTENTION = ['.PNG', '.JPG', '.JPEG', '.BMP', '.TIF',
 
 def join(*args):
     return os.path.join(*args)
+
 
 def read_imgs(path):
     assert isinstance(path, str)
@@ -48,12 +48,14 @@ def read_imgs(path):
 
     return img_list
 
+
 def is_img(path):
     _, suffix = os.path.splitext(path)
     if suffix in IMG_EXTENTION:
         return True
     else:
         return False
+
 
 # 确定一个最大的人脸
 def nms(boxes):
@@ -69,6 +71,7 @@ def nms(boxes):
         area.append((box[2]-box[0])*(box[3]-box[1]))
 
     return area.index(max(area))
+
 
 # 图片检测与保存
 def get_bounding_box(detector, image, conditioned_on_box=False, scale=1.4):
@@ -107,6 +110,7 @@ def get_bounding_box(detector, image, conditioned_on_box=False, scale=1.4):
 
     return box, landmarks
 
+
 def generate_crop_box(image_info=None, scale=1.2):
     '''
     giving provided image_info and rescale the box to new size
@@ -143,6 +147,18 @@ def generate_crop_box(image_info=None, scale=1.2):
                center[0] + size / 2, center[1] + size / 2]
 
     return box
+
+
+def save_image(image_fold, image_name, image):
+
+    try:
+        if not os.path.exists(image_fold):
+            os.mkdir(image_fold)
+        save_path = join(image_fold, image_name)
+        io.imsave(save_path, image)
+        return save_path
+    except:
+        return None
 
 ##################################################
 # 读取图片集文件夹，并可以得到所有视频的label idx以及路径
@@ -198,17 +214,6 @@ class ImageFolder(object):
 
         return filepaths
 
-def save_image(image_fold, image_name, image):
-
-    try:
-        if not os.path.exists(image_fold):
-            os.mkdir(image_fold)
-        save_path = join(image_fold, image_name)
-        print('===>Saved in ', save_path)
-        io.imsave(save_path, image)
-        return save_path
-    except:
-        return None
 
 def fuck_this_image(detector, image_path, save_path, classname, image_size, scale):
     _, file = os.path.split(image_path)
@@ -241,6 +246,7 @@ def fuck_this_image(detector, image_path, save_path, classname, image_size, scal
             return None
     return None
 
+
 def main(args):
     image_size = args.image_size
     scale = args.scale
@@ -255,7 +261,6 @@ def main(args):
     save_path['region'] = os.path.join(save_path['root'], 'region')
     save_path['face'] = os.path.join(save_path['root'], 'face')
 
-
     if not os.path.exists(save_path['root']):
         os.mkdir(save_path['root'])
     if not os.path.exists(save_path['img']):
@@ -266,6 +271,8 @@ def main(args):
         os.mkdir(save_path['region'])
     if not os.path.exists(save_path['face']):
         os.mkdir(save_path['face'])
+
+    # 写第一行标注
     info_file = open(save_path['root'] + '/infomation.csv', 'w')
     info_file.write('aligned_imgs,line_imgs,region_imgs,face_imgs,')
     info_file.write('x,y,w,h')
@@ -273,11 +280,13 @@ def main(args):
         info_file.write(',x_%d,y_%d' % (i, i))
     info_file.write('\n')
 
+    # 定义人脸检测器
     if use_dlib:
         face_detector = dlibpp.DLIBPP(68)
     else:
         face_detector = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=True)
 
+    # 遍历整个项目数据集
     for (class_idx, img_path) in tqdm(imgfolder.samples):
         print('Aligning [%s] in [%s]' %(os.path.split(img_path)[1], imgfolder.idx_to_class[class_idx]))
         results = fuck_this_image(face_detector, img_path, save_path, imgfolder.idx_to_class[class_idx], image_size, scale)
@@ -290,7 +299,19 @@ def main(args):
             for idx in range(len(info[1])):
                 info_file.write(',{},{}'.format(info[1][idx, 0], info[1][idx, 1]))
             info_file.write('\n')
+            info_file.flush()
     info_file.close()
+
+    # travel the classes, generate aus and files
+    for class_name in tqdm(imgfolder.classes):
+        ia = join(save_path['img'], class_name)
+        op = join(save_path['root'], 'aus', class_name)
+        os.system('%s -fdir %s -aus -out_dir %s' % (args.OpenFace, ia, op))
+        delete_txts = glob.glob(join(op, '*.txt'))
+        for txt in delete_txts:
+            os.system('rm %s' % (txt))
+    # os.system('python3 code/prepare_au_annotations.py - ia temp_results/aus/ -op temp_results/aus/')
+
 
 if __name__ == '__main__':
     main(args)

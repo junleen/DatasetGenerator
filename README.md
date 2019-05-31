@@ -46,7 +46,7 @@
 
 ```shell
 视频，组织方式为：
-input_dir:
+input_dir\
 	\class1
 		\video1
 		\video2
@@ -56,7 +56,7 @@ input_dir:
 		\video2
 		
 图片，组织方式为：
-input_dir:
+input_dir\
 	\class1
 		\img1
 		\img2
@@ -111,6 +111,6 @@ python3 imgs_fold input_dir output_dir --image_size 224 --OpenFace your OpenFace
 运行文件
 
 ```python
-
+python3 code/video_frame.py temp/ temp/xh --OpenFace your OpenFace build/bin/FaceLandmarksImg --image_size 224 --scale 1.2
 ```
 
