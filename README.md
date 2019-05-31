@@ -113,6 +113,6 @@ python3 imgs_fold input_dir output_dir --image_size 224 --OpenFace your OpenFace
 运行文件
 
 ```python
-python3 code/video_frame.py temp/ temp/xh --OpenFace your OpenFace build/bin/FaceLandmarksImg --image_size 224 --scale 1.2
+python3 code/video_frame.py input_dir output_dir --image_size 224 --OpenFace your OpenFace build/bin/FaceLandmarksImg --scale 1.2
 ```
 
