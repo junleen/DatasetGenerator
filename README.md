@@ -72,16 +72,18 @@ input_dir\
 
 ```shell
 output_dir\
-	\aus
-		\class1
-		\class2
-		...
-    \face
-    	\class1
-    	...
-    \img
-	\line
-	\region
+		\aus
+			\class1
+				\img1.csv
+				\img2.csv
+			\class2
+			...
+    	\face
+    		\class1
+    		...
+    	\img
+		\line
+		\region
 ```
 
 
